@@ -14,8 +14,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@types/express": "^5.0.3",
     "@types/ws": "^8.18.1",
     "chess.js": "^1.2.0",
+    "express": "^5.1.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {

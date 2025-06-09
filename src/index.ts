@@ -1,21 +1,15 @@
 import { WebSocketServer } from "ws";
-import { GameManager } from "./GameManager";
+import express from "express";
 
-const wss = new WebSocketServer({ port: 8080 });
-const gameManager: GameManager = new GameManager();
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-wss.on("connection", (ws) => {
-    console.log("player connected");
-    gameManager.addPlayer(ws);
-    
-    ws.on("message", (message) => {
-        
-    });
-        
-    ws.on("close", () => {
-        console.log("Client disconnected");
-    });
+app.use(express.static("public"));
 
-
+app.get("/", (req, res) => {
+    res.sendFile(__dirname + "/public/index.html");
 });
-console.log("WebSocket server is running on ws://localhost:8080");
+
+const server = app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
