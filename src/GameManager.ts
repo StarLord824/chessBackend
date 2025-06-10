@@ -17,7 +17,7 @@ export class GameManager {
     public addPlayer(ws: WebSocket) {
         const player = new Player(ws);
         GameManager.players.push(player);
-        console.log(`Player ${++GameManager.playersCount} connected, give your name below : `);
+        ws.send(`Player ${++GameManager.playersCount} connected, give your name : `);
         this.addHandler(player);
     }
 
@@ -38,12 +38,14 @@ export class GameManager {
 
     public addHandler(player: Player) {
 
-        player.ws.on("open", () => {
-            console.log(`Player ${player.name} connected, ab kuch message to bhejo`);
-            // player.ws.send(JSON.stringify({ type: "init" }));
-        });
+        // player.ws.on("open", () => {
+        //     console.log(`Player ${player.name} connected, ab kuch message to bhejo`);
+        //     // player.ws.send(JSON.stringify({ type: "init" }));
+        // });
         player.ws.on("message", (message) => {
             const messageData = JSON.parse(message.toString());
+            
+            //setting player name
             if(messageData.type === Set_Name) {
                 player.name = messageData.data;
                 player.ws.send(`Hello ${player.name}`);
@@ -53,6 +55,8 @@ export class GameManager {
                     }
                 });
             }
+
+            //enter a game
             if (messageData.type === Init_Game) {
                 //a user is in the queue
                 //start the game 
@@ -63,13 +67,20 @@ export class GameManager {
                     //add game object to both players
                     GameManager.pendingUser.game = game;
                     player.game = game;
+                    
+                    // player.ws.send(JSON.stringify({ type: Game_Started, payload: game.board.fen() }));
+                    player.ws.send(`The Culling Games are starting and you are assigned Black. Good luck ${player.name}!`);
+                    GameManager.pendingUser.ws.send(`The Culling Games are starting and you are assigned White. Best of Luck ${GameManager.pendingUser.name}!`);
                     GameManager.pendingUser = undefined;
                 }
                 //join the queue for matching
                 else {
                     GameManager.pendingUser = player;
+                    player.ws.send("Waiting for your opponent to join the Culling games...");
                 }
             }
+
+            //making moves
             if (messageData.type === Move) {
                 const move = messageData.data;
                 const game = GameManager.games.find(g => g.whitePlayer.ws === player.ws || g.blackPlayer.ws === player.ws);
