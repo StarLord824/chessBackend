@@ -16,7 +16,7 @@ class GameManager {
     addPlayer(ws) {
         const player = new Game_1.Player(ws);
         GameManager.players.push(player);
-        ws.send(`Player ${++GameManager.playersCount} connected, give your name : `);
+        ws.send(JSON.stringify({ message: `Player ${++GameManager.playersCount} connected, give your name : ` }));
         this.addHandler(player);
     }
     removePlayer(ws) {
@@ -44,7 +44,7 @@ class GameManager {
             //setting player name
             if (messageData.type === messages_1.Set_Name) {
                 player.name = messageData.data;
-                player.ws.send(`Hello ${player.name}`);
+                player.ws.send(JSON.stringify({ message: `Hello ${player.name}` }));
                 GameManager.players.forEach(p => {
                     if (p.ws !== player.ws) {
                         p.ws.send(JSON.stringify({ type: messages_1.Player_Joined, payload: player.name }));
@@ -62,14 +62,14 @@ class GameManager {
                     GameManager.pendingUser.game = game;
                     player.game = game;
                     // player.ws.send(JSON.stringify({ type: Game_Started, payload: game.board.fen() }));
-                    player.ws.send(`The Culling Games are starting and you are assigned Black. Good luck ${player.name}!`);
-                    GameManager.pendingUser.ws.send(`The Culling Games are starting and you are assigned White. Best of Luck ${GameManager.pendingUser.name}!`);
+                    player.ws.send(JSON.stringify({ type: messages_1.Game_Started, payload: game.board.fen(), message: `The Culling Games are starting and you are assigned Black. Good luck ${player.name}!` }));
+                    GameManager.pendingUser.ws.send(JSON.stringify({ type: messages_1.Game_Started, payload: game.board.fen(), message: `The Culling Games are starting and you are assigned White. Best of Luck ${GameManager.pendingUser.name}!` }));
                     GameManager.pendingUser = undefined;
                 }
                 //join the queue for matching
                 else {
                     GameManager.pendingUser = player;
-                    player.ws.send("Waiting for your opponent to join the Culling games...");
+                    player.ws.send(JSON.stringify({ message: "Waiting for your opponent to join the Culling games..." }));
                 }
             }
             //making moves

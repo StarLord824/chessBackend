@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { Game, Player } from "./Game";
-import { Init_Game, Move, Player_Joined, Set_Name } from "./messages";
+import { Game_Started, Init_Game, Move, Player_Joined, Set_Name } from "./messages";
 
 export class GameManager {
     private static playersCount = 0;
@@ -17,7 +17,7 @@ export class GameManager {
     public addPlayer(ws: WebSocket) {
         const player = new Player(ws);
         GameManager.players.push(player);
-        ws.send(`Player ${++GameManager.playersCount} connected, give your name : `);
+        ws.send(JSON.stringify({message: `Player ${++GameManager.playersCount} connected, give your name : `}));
         this.addHandler(player);
     }
 
@@ -48,7 +48,7 @@ export class GameManager {
             //setting player name
             if(messageData.type === Set_Name) {
                 player.name = messageData.data;
-                player.ws.send(`Hello ${player.name}`);
+                player.ws.send(JSON.stringify({message: `Hello ${player.name}`}));
                 GameManager.players.forEach(p => {
                     if(p.ws !== player.ws) {
                         p.ws.send(JSON.stringify({ type: Player_Joined, payload: player.name }));
@@ -69,14 +69,14 @@ export class GameManager {
                     player.game = game;
                     
                     // player.ws.send(JSON.stringify({ type: Game_Started, payload: game.board.fen() }));
-                    player.ws.send(`The Culling Games are starting and you are assigned Black. Good luck ${player.name}!`);
-                    GameManager.pendingUser.ws.send(`The Culling Games are starting and you are assigned White. Best of Luck ${GameManager.pendingUser.name}!`);
+                    player.ws.send(JSON.stringify({ type: Game_Started, payload: game.board.fen(), message: `The Culling Games are starting and you are assigned Black. Good luck ${player.name}!` }));
+                    GameManager.pendingUser.ws.send(JSON.stringify({ type : Game_Started, payload: game.board.fen(), message: `The Culling Games are starting and you are assigned White. Best of Luck ${GameManager.pendingUser.name}!` }));
                     GameManager.pendingUser = undefined;
                 }
                 //join the queue for matching
                 else {
                     GameManager.pendingUser = player;
-                    player.ws.send("Waiting for your opponent to join the Culling games...");
+                    player.ws.send(JSON.stringify({ message: "Waiting for your opponent to join the Culling games..."}));
                 }
             }
 
