@@ -1,27 +1,25 @@
-import { WebSocket } from "ws";
-import { Game, Player } from "./Game";
-import { Init_Game, Move, Player_Joined, Set_Name } from "./messages";
-
-export class GameManager {
-    private static playersCount = 0;
-    private static players: Player[];
-    private static games: Game[];
-    private static pendingUser: Player | undefined;
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GameManager = void 0;
+const Game_1 = require("./Game");
+const messages_1 = require("./messages");
+class GameManager {
+    static playersCount = 0;
+    static players;
+    static games;
+    static pendingUser;
     constructor() {
         GameManager.players = [];
         GameManager.games = [];
         GameManager.pendingUser = undefined;
     }
-
-    public addPlayer(ws: WebSocket) {
-        const player = new Player(ws);
+    addPlayer(ws) {
+        const player = new Game_1.Player(ws);
         GameManager.players.push(player);
         console.log(`Player ${++GameManager.playersCount} connected, give your name below : `);
         this.addHandler(player);
     }
-
-    public removePlayer(ws: WebSocket) {
+    removePlayer(ws) {
         GameManager.players = GameManager.players.filter(player => player.ws !== ws);
         //stop his game
         const gameIndex = GameManager.games.findIndex(game => game.whitePlayer.ws === ws || game.blackPlayer.ws === ws);
@@ -29,37 +27,35 @@ export class GameManager {
             const game = GameManager.games[gameIndex];
             if (game.whitePlayer.ws === ws) {
                 game.blackPlayer.ws.send(JSON.stringify({ type: "error", message: "Opponent left the game." }));
-            } else {
+            }
+            else {
                 game.whitePlayer.ws.send(JSON.stringify({ type: "error", message: "Opponent left the game." }));
             }
             GameManager.games.splice(gameIndex, 1);
         }
     }
-
-    public addHandler(player: Player) {
-
+    addHandler(player) {
         player.ws.on("open", () => {
             console.log(`Player ${player.name} connected, ab kuch message to bhejo`);
             // player.ws.send(JSON.stringify({ type: "init" }));
         });
         player.ws.on("message", (message) => {
             const messageData = JSON.parse(message.toString());
-            if(messageData.type === Set_Name) {
+            if (messageData.type === messages_1.Set_Name) {
                 player.name = messageData.data;
                 player.ws.send(`Hello ${player.name}`);
                 GameManager.players.forEach(p => {
-                    if(p.ws !== player.ws) {
-                        p.ws.send(JSON.stringify({ type: Player_Joined, payload: player.name }));
+                    if (p.ws !== player.ws) {
+                        p.ws.send(JSON.stringify({ type: messages_1.Player_Joined, payload: player.name }));
                     }
                 });
             }
-            if (messageData.type === Init_Game) {
+            if (messageData.type === messages_1.Init_Game) {
                 //a user is in the queue
                 //start the game 
-                if(GameManager.pendingUser) {
-                    const game = new Game(GameManager.pendingUser, player);
+                if (GameManager.pendingUser) {
+                    const game = new Game_1.Game(GameManager.pendingUser, player);
                     GameManager.games.push(game);
-
                     //add game object to both players
                     GameManager.pendingUser.game = game;
                     player.game = game;
@@ -70,15 +66,17 @@ export class GameManager {
                     GameManager.pendingUser = player;
                 }
             }
-            if (messageData.type === Move) {
+            if (messageData.type === messages_1.Move) {
                 const move = messageData.data;
                 const game = GameManager.games.find(g => g.whitePlayer.ws === player.ws || g.blackPlayer.ws === player.ws);
                 if (game) {
                     game.makeMove(player.ws, move);
-                } else {
+                }
+                else {
                     player.ws.send(JSON.stringify({ type: "error", message: "You are not in a game." }));
                 }
             }
         });
     }
 }
+exports.GameManager = GameManager;

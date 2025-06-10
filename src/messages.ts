@@ -5,3 +5,4 @@ export const Player_Left = "PlayerLeft";
 export const Player_Moved = "PlayerMoved";
 export const Move= "Move";
 export const Init_Game = "InitGame"; 
+export const Set_Name = "SetName";
