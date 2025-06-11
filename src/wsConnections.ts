@@ -1,8 +1,9 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { GameManager } from "./GameManager";
+import http from "http";
 
-export default function wsConnections() {
-    const wss = new WebSocketServer({ port: 8080 }, ()=>{
+export default function wsConnections(server: http.Server) {
+    const wss = new WebSocketServer({ server }, ()=>{
         console.log("WebSocket server started");
     });
     const gameManager: GameManager = new GameManager();
@@ -22,5 +23,5 @@ export default function wsConnections() {
 
 
     });
-    console.log("WebSocket server is running on ws://localhost:8080");
+    console.log("WebSocket server is running on port 3000 rather than ws://localhost:8080");
 }
