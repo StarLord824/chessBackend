@@ -1,6 +1,6 @@
 import { WebSocketServer } from "ws";
 import express from "express";
-import wsConnections from "./wsConnections";
+import wsConnections from "./ws/wsConnections";
 import { createServer } from "http";
 
 const app = express();
@@ -12,10 +12,9 @@ wsConnections(server);
 app.use(express.static("public"));
 
 app.get("/", (req, res) => {
-    console.log("Received request for root path");
-    res.send(`Chess Platform Server`);
+  res.send(`Chess Platform Server`);
 });
 
 server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
