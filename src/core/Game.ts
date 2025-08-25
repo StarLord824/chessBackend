@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { Chess } from "chess.js";
+import { Chess, Move } from "chess.js";
 import {MessageTypes as Messages} from "../ws/messages";
 
 export class Player {
@@ -13,76 +13,73 @@ export class Player {
   }
 }
 
-type move = { from: string; to: string };
+export type MovePayload = { from: string; to: string };
 export class Game {
   public whitePlayer: Player;
   public blackPlayer: Player;
   public board: Chess;
-  public moves: move[];
-  public startTime = Date.now();
+  public moves: MovePayload[];
+  public startTime : number;
 
   constructor(whitePlayer: Player, blackPlayer: Player) {
     this.whitePlayer = whitePlayer;
     this.blackPlayer = blackPlayer;
     this.board = new Chess();
     this.moves = [];
+    this.startTime = Date.now();
   }
 
-  public makeMove(ws: WebSocket, move: { from: string; to: string }) {
-    // Check if the move is valid
+  public makeMove(playerWs: WebSocket, move: MovePayload) {
+    const playerColor = playerWs === this.whitePlayer.ws ? "w" : "b";
 
-    //check if this is the player's turn
-    if (this.board.moves.length * 2 === 0 && ws !== this.whitePlayer.ws) {
-      // It's an even move, so it must be white's turn
-      ws.send(
-        JSON.stringify({ type: "error", message: "It's not your turn." })
-      );
+    //check if this is the player's turn, and if the move is valid
+    if (this.board.turn() !== playerColor) {
+      playerWs.send(JSON.stringify({
+        type: "error",
+        message: "It's not your turn."
+      }));
       return;
-    } else if (this.board.moves.length * 2 > 0 && ws === this.whitePlayer.ws) {
-      // It's an odd move, so it must be black's turn
-      ws.send(
-        JSON.stringify({ type: "error", message: "It's not your turn." })
-      );
+    }
+    const result = this.board.move(move as Move);
+    if (!result) {
+      playerWs.send(JSON.stringify({
+        type: "error",
+        message: "Invalid move."
+      }));
       return;
     }
 
-    //move
-    try {
-      this.board.move(move);
-    } catch (e) {
-      ws.send(
-        JSON.stringify({ type: "error", message: "Error in making move" })
-      );
-      return;
-    }
-    //update the board and push the move to the moves array
+    // Save move
     this.moves.push(move);
 
-    //check if game is over
+    // Broadcast move to both players
+    [this.whitePlayer, this.blackPlayer].forEach(p => {
+      p.ws.send(JSON.stringify({
+        type: Messages.Move,
+        payload: {
+          move,
+          board: this.board.fen(),
+          turn: this.board.turn()
+        }
+      }));
+    });
+
+    // Check for game over
     if (this.board.isGameOver()) {
-      this.blackPlayer.ws.emit(
-        JSON.stringify({
+      let winner: string;
+      if (this.board.isCheckmate()) {
+        winner = this.board.turn() === "w" ? "black" : "white"; // opposite of current turn
+      } else {
+        winner = "draw";
+      }
+
+      [this.whitePlayer, this.blackPlayer].forEach(p => {
+        p.ws.send(JSON.stringify({
           type: Messages.Game_Over,
-          payload: this.board.turn() === "w" ? "white" : "black",
-        })
-      );
+          payload: winner
+        }));
+      });
     }
 
-    //send the move and board to both players
-    if (this.board.moves.length % 2 === 0) {
-      this.whitePlayer.ws.emit(
-        JSON.stringify({
-          type: Messages.Move,
-          payload: move,
-        })
-      );
-    } else {
-      this.blackPlayer.ws.emit(
-        JSON.stringify({
-          type: Messages.Move,
-          payload: move,
-        })
-      );
-    }
   }
 }
