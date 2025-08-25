@@ -1,8 +1,16 @@
-export const Game_Over = "GameOver";
-export const Game_Started = "GameStarted";
-export const Player_Joined = "PlayerJoined";
-export const Player_Left = "PlayerLeft";
-export const Player_Moved = "PlayerMoved";
-export const Move= "Move";
-export const Init_Game = "InitGame"; 
-export const Set_Name = "SetName";
+export enum MessageTypes {
+    Game_Over = "GameOver",
+    Game_Started = "GameStarted",
+    Player_Joined = "PlayerJoined",
+    Player_Left = "PlayerLeft",
+    Player_Moved = "PlayerMoved",
+    Move= "Move",
+    Init_Game = "InitGame",
+    Set_Name = "SetName",
+}
+
+//users will send moves through the frontend in this json format
+// {
+// "type": "MOVE",
+//   "payload": { "from": "e2", "to": "e4" }
+// }

@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { Chess } from "chess.js";
-import { Game_Over, Move } from "./ws/messages";
+import {MessageTypes as Messages} from "../ws/messages";
 
 export class Player {
   public ws: WebSocket;
@@ -62,7 +62,7 @@ export class Game {
     if (this.board.isGameOver()) {
       this.blackPlayer.ws.emit(
         JSON.stringify({
-          type: Game_Over,
+          type: Messages.Game_Over,
           payload: this.board.turn() === "w" ? "white" : "black",
         })
       );
@@ -72,14 +72,14 @@ export class Game {
     if (this.board.moves.length % 2 === 0) {
       this.whitePlayer.ws.emit(
         JSON.stringify({
-          type: Move,
+          type: Messages.Move,
           payload: move,
         })
       );
     } else {
       this.blackPlayer.ws.emit(
         JSON.stringify({
-          type: Move,
+          type: Messages.Move,
           payload: move,
         })
       );
