@@ -57,7 +57,7 @@ export class Game {
       p.ws.send(JSON.stringify({
         type: Messages.Move,
         payload: {
-          move,
+          moves: this.moves, //includes full move history
           board: this.board.fen(),
           turn: this.board.turn()
         }
@@ -80,6 +80,5 @@ export class Game {
         }));
       });
     }
-
   }
 }
