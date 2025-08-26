@@ -5,6 +5,8 @@ import matchRouter from "./routes/matches";
 import userRouter from "./routes/users";
 import authRouter from "./routes/auth";
 
+import {toNodeHandler} from "better-auth/node";
+import { auth } from "./auth";
 
 const app = express();
 const server = createServer(app);
@@ -18,8 +20,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/matches", matchRouter);
 app.use("/api/users", userRouter);
-app.use("/api/auth", authRouter);
+// app.use("/api/auth", authRouter);
 
+app.all('/api/auth/{*any}', toNodeHandler(auth));
 
 app.get("/", (req, res) => {
   res.send(`Chess Platform Server`);

@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -24,6 +23,12 @@ model User {
   updatedAt     DateTime
   sessions      Session[]
   accounts      Account[]
+
+  rating      Int
+  wins        Int
+  losses      Int
+  matchesWhite     Match[]  @relation(name: "WhiteMatches")
+  matchesBlack     Match[]  @relation(name: "BlackMatches")
 
   @@unique([email])
   @@map("user")
@@ -72,4 +77,29 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+model Match{
+  id Int @id @default(autoincrement())
+  
+  whitePlayerId String
+  blackPlayerId String
+  white   User @relation("WhiteMatches", fields: [whitePlayerId], references: [id], onDelete: Cascade)
+  black   User @relation("BlackMatches", fields: [blackPlayerId], references: [id], onDelete: Cascade)
+  
+  status   MatchStatus  @default(IN_PROGRESS)
+  
+  winnerId String? //draw
+  moves   Json  //[{from:"e2",to:"e4",san:"e4"}, ...]
+
+  result String? //"1-0", "0-1", "1/2-1/2"
+  
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+enum MatchStatus {
+  IN_PROGRESS
+  FINISHED
+  ABORTED
 }
