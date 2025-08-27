@@ -23,7 +23,7 @@ export default function wsConnections(server: http.Server) {
     });
 
     ws.on("close", () => {
-      gameManager.removePlayer(ws);
+      gameManager.handleMessage(ws, `PlayerLeft`, null);
       console.log("Client disconnected");
     });
   });

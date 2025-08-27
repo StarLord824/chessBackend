@@ -1,27 +1,34 @@
 import { WebSocket } from "ws";
 import { Chess, Move } from "chess.js";
 import {MessageTypes as Messages} from "../ws/messages";
+import { prisma } from "../Singleton";
+import { MatchStatus } from "@prisma/client";
 
 export class Player {
+  public id: string;
   public ws: WebSocket;
-  public name?: string;
+  public username?: string;
   public game?: Game;
-  constructor(ws: WebSocket, name?: string, game?: Game) {
+  constructor(id: string, ws: WebSocket, username?: string, game?: Game) {
+    this.id = id;
     this.ws = ws;
-    this.name = name;
+    this.username = username;
     this.game = game;
   }
 }
 
 export type MovePayload = { from: string; to: string };
+
 export class Game {
+  public id: number;
   public whitePlayer: Player;
   public blackPlayer: Player;
   public board: Chess;
   public moves: MovePayload[];
   public startTime : number;
 
-  constructor(whitePlayer: Player, blackPlayer: Player) {
+  constructor(whitePlayer: Player, blackPlayer: Player, id: number) {
+    this.id = id;
     this.whitePlayer = whitePlayer;
     this.blackPlayer = blackPlayer;
     this.board = new Chess();
@@ -29,7 +36,7 @@ export class Game {
     this.startTime = Date.now();
   }
 
-  public makeMove(playerWs: WebSocket, move: MovePayload) {
+  public async makeMove(playerWs: WebSocket, move: MovePayload) {
     const playerColor = playerWs === this.whitePlayer.ws ? "w" : "b";
 
     //check if this is the player's turn, and if the move is valid
@@ -52,6 +59,13 @@ export class Game {
     // Save move
     this.moves.push(move);
 
+    await prisma.match.update({
+      where: { id: this.id },
+      data: {
+        moves: this.moves,
+        updatedAt: new Date()
+      }
+    });
     // Broadcast move to both players
     [this.whitePlayer, this.blackPlayer].forEach(p => {
       p.ws.send(JSON.stringify({
@@ -73,6 +87,15 @@ export class Game {
         winner = "draw";
       }
 
+      await prisma.match.update({
+        where: { id: this.id },
+        data: {
+          status: MatchStatus.FINISHED,
+          winnerId: winner === "draw" ? null : winner === "black" ? this.blackPlayer.id : this.whitePlayer.id,
+          updatedAt: new Date()
+        }
+      });
+      
       [this.whitePlayer, this.blackPlayer].forEach(p => {
         p.ws.send(JSON.stringify({
           type: Messages.Game_Over,

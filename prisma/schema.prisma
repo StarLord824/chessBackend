@@ -16,6 +16,7 @@ datasource db {
 model User {
   id            String    @id
   name          String
+  username      String    @unique
   email         String
   emailVerified Boolean
   image         String?
@@ -25,10 +26,11 @@ model User {
   accounts      Account[]
 
   rating      Int
-  wins        Int
-  losses      Int
+  // wins        Int
+  // losses      Int
   matchesWhite     Match[]  @relation(name: "WhiteMatches")
   matchesBlack     Match[]  @relation(name: "BlackMatches")
+  matchesWon       Match[]  @relation(name: "Winner")
 
   @@unique([email])
   @@map("user")
@@ -89,7 +91,9 @@ model Match{
   
   status   MatchStatus  @default(IN_PROGRESS)
   
-  winnerId String? //draw
+  // winner   String //draw
+  winnerId String?
+  winner   User? @relation("Winner", fields: [winnerId], references: [id], onDelete: Cascade)
   moves   Json  //[{from:"e2",to:"e4",san:"e4"}, ...]
 
   result String? //"1-0", "0-1", "1/2-1/2"
