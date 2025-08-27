@@ -76,7 +76,7 @@ export class GameManager {
     if (playerIndex !== -1) {
       GameManager.players.splice(playerIndex, 1);
       ws.send(
-        JSON.stringify({ message: "Player disconnected." })
+        JSON.stringify({ message: "You left the game." })
       );
     }
     //remove from queue
@@ -91,7 +91,7 @@ export class GameManager {
       const game = GameManager.games[gameIndex];
       const opponent = game.whitePlayer.ws === ws ? game.blackPlayer : game.whitePlayer;
       opponent.ws.send(
-        JSON.stringify({ type: Messages.Player_Left, payload: opponent.name })
+        JSON.stringify({ type: Messages.Player_Left, payload: opponent.name, message: `Opponent has left the game.` })
       );
       GameManager.games.splice(gameIndex, 1);
     }
