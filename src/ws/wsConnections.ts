@@ -9,9 +9,9 @@ export default function wsConnections(server: http.Server) {
 
   const gameManager: GameManager = new GameManager();
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
     console.log("player connected");
-    gameManager.addPlayer(ws);
+    gameManager.addPlayer(ws, req);
 
     ws.on("message", (message) => {
       try {
