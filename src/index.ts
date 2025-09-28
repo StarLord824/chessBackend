@@ -4,7 +4,7 @@ import { createServer } from "http";
 import wsConnections from "./ws/wsConnections";
 import matchRouter from "./routes/matches";
 import userRouter from "./routes/users";
-import authRouter from "./routes/auth";
+// import authRouter from "./routes/auth";
 
 import {toNodeHandler} from "better-auth/node";
 import { auth } from "./auth";
