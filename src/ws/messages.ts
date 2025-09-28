@@ -1,12 +1,13 @@
 export enum MessageTypes {
-    Game_Over = "GameOver",
-    Game_Started = "GameStarted",
     Player_Joined = "PlayerJoined",
     Player_Left = "PlayerLeft",
-    Player_Moved = "PlayerMoved",
+    Set_Name = "SetName",
     Move= "Move",
     Init_Game = "InitGame",
-    Set_Name = "SetName",
+    Game_Started = "GameStarted",
+    Game_Over = "GameOver",
+    Game_Resumed = "GameResumed",
+    Game_Aborted = "GameAborted",
 }
 
 //users will send moves through the frontend in this json format
