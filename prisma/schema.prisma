@@ -97,6 +97,8 @@ model Match{
   moves   Json  //[{from:"e2",to:"e4",san:"e4"}, ...]
 
   result String? //"1-0", "0-1", "1/2-1/2"
+  fen String
+  endReason String?  //"checkmate", "stalemate", "draw", "resign", "timeout", "aborted"
   
   createdAt DateTime
   updatedAt DateTime

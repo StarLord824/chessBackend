@@ -8,6 +8,18 @@ export default function wsConnections(server: http.Server) {
   });
 
   const gameManager: GameManager = new GameManager();
+  
+  // restore in-progress matches from DB to memory
+  gameManager.restoreFromDb().then(() => console.log("Restored games from DB"));
+  
+  // heartbeat
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws: any) => {
+      if (ws.isAlive === false) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping(() => {});
+    });
+  }, 30000);
 
   wss.on("connection", (ws, req) => {
     console.log("player connected");
@@ -23,6 +35,7 @@ export default function wsConnections(server: http.Server) {
     });
 
     ws.on("close", () => {
+      // gameManager.handleConnectionClose(ws);
       gameManager.handleMessage(ws, `PlayerLeft`, null);
       console.log("Client disconnected");
     });

@@ -4,6 +4,7 @@
   import { prisma } from "../Singleton";
   import { auth } from "../auth";
   import { MatchStatus } from "@prisma/client";
+import { set } from "zod";
 
   export class GameManager {
     private playersCount = 0;
@@ -181,6 +182,7 @@
             moves: [],
             createdAt: new Date(),
             updatedAt: new Date(),
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
           }
         });
         
@@ -230,5 +232,12 @@
           JSON.stringify({ type: "error", message: "You are not in a game." })
         );
       }
+    }
+
+    public async restoreFromDb() {
+      //no logic for now
+      //fake 3 seconds timeout
+      setTimeout(()=>{
+      }, 4000)
     }
   }

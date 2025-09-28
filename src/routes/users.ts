@@ -10,6 +10,7 @@ userRouter.get("/", (req: Request, res: Response) => {
 
 
 userRouter.get("/me", async (req: Request, res: Response) => {
+  //returns the user data of the logged in user
   try {
     const { email } = req.body.user;
     const user = await prisma.user.findUnique({
