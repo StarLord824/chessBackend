@@ -21,22 +21,28 @@ export default function wsConnections(server: http.Server) {
     });
   }, 30000);
 
-  wss.on("connection", (ws, req) => {
+  wss.on("connection", (ws: any, req) => {
+    ws.isAlive = true;
+    ws.on("pong", () => {
+      ws.isAlive = true;
+    });
+    
     console.log("player connected");
     gameManager.addPlayer(ws, req);
 
-    ws.on("message", (message) => {
+    ws.on("message", (message : Buffer) => {
       try {
         const {type, payload} = JSON.parse(message.toString());
         gameManager.handleMessage(ws, type, payload);
       } catch (e) {
         console.log(`Invalid message from client:`, e);
+        ws.send(JSON.stringify({ type: "error", message: "Invalid message." }));
       }
     });
 
     ws.on("close", () => {
-      // gameManager.handleConnectionClose(ws);
-      gameManager.handleMessage(ws, `PlayerLeft`, null);
+      gameManager.handleConnectionClose(ws);
+      // gameManager.handleMessage(ws, `PlayerLeft`, null);
       console.log("Client disconnected");
     });
   });
