@@ -7,7 +7,7 @@ import userRouter from "./routes/users";
 // import authRouter from "./routes/auth";
 
 import {toNodeHandler} from "better-auth/node";
-import { auth } from "./auth";
+import { auth } from "./lib/auth";
 
 const app = express();
 const server = createServer(app);
@@ -22,11 +22,17 @@ app.use(
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   })
 );
+app.use(express.json());
 
-app.all('/api/auth/{*any}', toNodeHandler(auth));
+const middleware = (req: any, res: any, next: any) => {
+  //print req body
+  console.log(req.body);
+  next();
+};
+
+app.all('/api/auth/*splat', middleware, toNodeHandler(auth));
 
 app.use(express.static("public"));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/matches", matchRouter);

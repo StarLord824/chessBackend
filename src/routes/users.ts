@@ -30,7 +30,7 @@ userRouter.get("/:id", async (req: Request, res: Response) => {
     if (!user) res.status(404).json({ error: "User not found" });
     res.json(user);
   } catch (err) {
-    console.error(err);
+    // console.error(err);
     res.status(500).json({ error: "Failed to fetch user" });
   }
 });

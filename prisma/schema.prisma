@@ -16,21 +16,23 @@ datasource db {
 model User {
   id            String    @id
   name          String
-  username      String    @unique
+  username      String    @unique  @default(uuid())
   email         String
-  emailVerified Boolean
+  emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
   sessions      Session[]
+  // password      String
   accounts      Account[]
 
-  rating      Int
+  rating       Int       @default(0)
+
   // wins        Int
   // losses      Int
-  matchesWhite     Match[]  @relation(name: "WhiteMatches")
-  matchesBlack     Match[]  @relation(name: "BlackMatches")
-  matchesWon       Match[]  @relation(name: "Winner")
+  matchesWhite Match[] @relation(name: "WhiteMatches")
+  matchesBlack Match[] @relation(name: "BlackMatches")
+  matchesWon   Match[] @relation(name: "Winner")
 
   @@unique([email])
   @@map("user")
@@ -81,25 +83,21 @@ model Verification {
   @@map("verification")
 }
 
-model Match{
-  id Int @id @default(autoincrement())
-  
+model Match {
+  id            Int         @id @default(autoincrement())
   whitePlayerId String
   blackPlayerId String
-  white   User @relation("WhiteMatches", fields: [whitePlayerId], references: [id], onDelete: Cascade)
-  black   User @relation("BlackMatches", fields: [blackPlayerId], references: [id], onDelete: Cascade)
-  
-  status   MatchStatus  @default(IN_PROGRESS)
-  
+  white         User        @relation("WhiteMatches", fields: [whitePlayerId], references: [id], onDelete: Cascade)
+  black         User        @relation("BlackMatches", fields: [blackPlayerId], references: [id], onDelete: Cascade)
+  status        MatchStatus @default(IN_PROGRESS)
   // winner   String //draw
-  winnerId String?
-  winner   User? @relation("Winner", fields: [winnerId], references: [id], onDelete: Cascade)
-  moves   Json  //[{from:"e2",to:"e4",san:"e4"}, ...]
+  winnerId      String?
+  winner        User?       @relation("Winner", fields: [winnerId], references: [id], onDelete: Cascade)
+  moves         Json //[{from:"e2",to:"e4",san:"e4"}, ...]
 
-  result String? //"1-0", "0-1", "1/2-1/2"
-  fen String
-  endReason String?  //"checkmate", "stalemate", "draw", "resign", "timeout", "aborted"
-  
+  result    String? //"1-0", "0-1", "1/2-1/2"
+  fen       String
+  endReason String? //"checkmate", "stalemate", "draw", "resign", "timeout", "aborted"
   createdAt DateTime
   updatedAt DateTime
 }
