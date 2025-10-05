@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 export const auth = betterAuth({
     trustedOrigins: [
-        'https://example.com/dashboard', 
+        // 'ex'
         'http://localhost:5173',
         'http://localhost:3000'
     ],
@@ -16,7 +16,6 @@ export const auth = betterAuth({
     }),
     emailAndPassword: {
         enabled: true,
-
     },
     socialProviders: {
         google: {
@@ -43,6 +42,12 @@ export const auth = betterAuth({
             })(),
             // redirectURI: process.env.AUTH_GOOGLE_REDIRECT_URI || "http://localhost:3000/api/auth/google/callback",
         },
+        discord : {
+            enabled: true,
+            clientId: process.env.AUTH_DISCORD_ID as string,
+            clientSecret: process.env.AUTH_DISCORD_SECRET as string,
+            scope: ["identify", "email"]
+        }
     }
   //...
 });

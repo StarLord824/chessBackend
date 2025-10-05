@@ -6,7 +6,7 @@ import matchRouter from "./routes/matches";
 import userRouter from "./routes/users";
 // import authRouter from "./routes/auth";
 
-import {toNodeHandler} from "better-auth/node";
+import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 
 const app = express();
@@ -22,15 +22,16 @@ app.use(
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   })
 );
+
 app.use(express.json());
 
-const middleware = (req: any, res: any, next: any) => {
+const logginMiddleware = (req: any, res: any, next: any) => {
   //print req body
   console.log(req.body);
   next();
 };
 
-app.all('/api/auth/*splat', middleware, toNodeHandler(auth));
+app.all("/api/auth/*splat", logginMiddleware, toNodeHandler(auth));
 
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
@@ -38,7 +39,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/matches", matchRouter);
 app.use("/api/users", userRouter);
 // app.use("/api/auth", authRouter);
-
 
 app.get("/", (req, res) => {
   res.send(`Chess Platform Server`);

@@ -2,7 +2,7 @@ import { WebSocket } from "ws";
 import { Game, Player } from "./Game";
 import { MessageTypes as Messages } from "../ws/messages";
 import { prisma } from "../Singleton";
-import { auth } from "../auth";
+import { auth } from "../lib/auth";
 import { MatchStatus } from "@prisma/client";
 // import { set } from "zod";
 import { Chess } from "chess.js";
@@ -12,8 +12,8 @@ export class GameManager {
   private players: Player[];
   private games: Game[];
   private pendingUser: Player | undefined;
-  private disconnectTimers: Map<string, NodeJS.Timeout> = new Map(); 
-  
+  private disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+
   constructor() {
     this.players = [];
     this.games = [];
@@ -21,7 +21,7 @@ export class GameManager {
   }
 
   public async restoreFromDb() {
-      const inProgress = await prisma.match.findMany({
+    const inProgress = await prisma.match.findMany({
       where: { status: MatchStatus.IN_PROGRESS },
     });
 
@@ -31,10 +31,18 @@ export class GameManager {
       const black = this.players.find((p) => p.id === m.blackPlayerId);
 
       // create placeholder players if socket missing (ws undefined for now)
-      const whitePlayer = white ?? new Player(m.whitePlayerId, (null as any), undefined);
-      const blackPlayer = black ?? new Player(m.blackPlayerId, (null as any), undefined);
+      const whitePlayer =
+        white ?? new Player(m.whitePlayerId, null as any, undefined);
+      const blackPlayer =
+        black ?? new Player(m.blackPlayerId, null as any, undefined);
 
-      const game = new Game(whitePlayer, blackPlayer, m.id, m.fen ?? new Chess().fen(), (m.moves as any) ?? []);
+      const game = new Game(
+        whitePlayer,
+        blackPlayer,
+        m.id,
+        m.fen ?? new Chess().fen(),
+        (m.moves as any) ?? []
+      );
       this.games.push(game);
 
       // if players were present in memory, attach game ref
@@ -44,6 +52,7 @@ export class GameManager {
   }
 
   public handleMessage(ws: WebSocket, type: string, payload: any) {
+  try {
     const player = this.players.find((p) => p.ws === ws);
     if (!player) {
       ws.send(JSON.stringify({ type: "error", message: "Player not found." }));
@@ -51,71 +60,106 @@ export class GameManager {
     }
 
     switch (type) {
-      // case Messages.Player_Joined:
-      //ops
-      // this.addPlayer(ws, payload);
-      // break;
       case Messages.Set_Name:
-        this.setName(player, payload.username);
+        try {
+          this.setName(player, payload.username);
+        } catch (err) {
+          console.error("Error in Set_Name:", err);
+          ws.send(JSON.stringify({ type: "error", message: "Failed to set username." }));
+        }
         break;
+
       case Messages.Player_Left:
-        this.removePlayer(player);
+        try {
+          this.removePlayer(player);
+        } catch (err) {
+          console.error("Error in Player_Left:", err);
+          ws.send(JSON.stringify({ type: "error", message: "Failed to remove player." }));
+        }
         break;
+
       case Messages.Init_Game:
-        this.startGame(player);
+        try {
+          this.startGame(player);
+        } catch (err) {
+          console.error("Error in Init_Game:", err);
+          ws.send(JSON.stringify({ type: "error", message: "Failed to start game." }));
+        }
         break;
+
       case Messages.Move:
-        this.makeMove(player, payload);
+        try {
+          this.makeMove(player, payload);
+        } catch (err) {
+          console.error("Error in Move:", err);
+          ws.send(JSON.stringify({ type: "error", message: "Failed to make move." }));
+        }
         break;
+
       case Messages.Game_Over:
-        //ops
+        // no-op, handled internally
         break;
+
       default:
-        ws.send(
-          JSON.stringify({ type: "error", message: "Invalid message type." })
-        );
+        ws.send(JSON.stringify({ type: "error", message: `Invalid message type: ${type}` }));
     }
+  } catch (err) {
+    console.error("Unexpected error in handleMessage:", err);
+    ws.send(JSON.stringify({ type: "error", message: "Server error processing your message." }));
   }
+}
+
 
   public async setName(player: Player, username: string) {
-    if(player.username) {
-      player.ws.send(JSON.stringify({ "type": "error", message: "Username already set" }));
+    if (player.username) {
+      player.ws.send(
+        JSON.stringify({ type: "error", message: "Username already set" })
+      );
       return;
     }
     try {
-      await prisma.user.update({ where: { id: player.id }, data: { username } });
+      await prisma.user.update({
+        where: { id: player.id },
+        data: { username },
+      });
       player.username = username;
       player.ws.send(JSON.stringify({ message: `Hello ${username}` }));
       this.broadcast(Messages.Player_Joined, username, player.ws);
     } catch (err: any) {
-      if (err?.code === "P2002") { // uniqueness violation
-        player.ws.send(JSON.stringify({ type: "error", message: "Username taken." }));
+      if (err?.code === "P2002") {
+        // uniqueness violation
+        player.ws.send(
+          JSON.stringify({ type: "error", message: "Username taken." })
+        );
       } else {
         console.error(err);
-        player.ws.send(JSON.stringify({ type: "error", message: "Could not set username." }));
+        player.ws.send(
+          JSON.stringify({ type: "error", message: "Could not set username." })
+        );
       }
     }
   }
 
-  public async addPlayer(ws: WebSocket, req: any) {
+  public async addPlayer(ws: WebSocket, req: any, email: string) {
     try {
       // 1. Extract session token from cookie or headers
-      const token = req.headers.cookie?.match(/session=([^;]+)/)?.[1];
-      if (!token) {
-        ws.close(4001, "Unauthorized: no token");
-        return;
-      }
+      // const token = req.headers.cookie?.match(/session=([^;]+)/)?.[1];
+      // if (!token) {
+      //   ws.close(4001, "Unauthorized: no token");
+      //   return;
+      // }
 
       // 2. Validate session using better-auth
-      const session = await auth.api.getSession(token);
-      if (!session) {
-        ws.close(4001, "Unauthorized: invalid session");
-        return;
-      }
+      // const session = await auth.api.getSession(req.headers.cookie);
+      // if (!session) {
+      //   ws.close(4001, "Unauthorized: invalid session");
+      //   return;
+      // }
 
       // 3. Lookup user in DB
       const user = await prisma.user.findUnique({
-        where: { id: session.user.id }
+        where: { email: email },
+        // where: { id: session.user.id }
       });
       if (!user) {
         ws.close(4001, "User not found");
@@ -127,7 +171,7 @@ export class GameManager {
       if (!player) {
         player = new Player(user.id, ws, user.username ?? undefined);
         this.players.push(player);
-      }else{
+      } else {
         player.ws = ws;
       }
 
@@ -149,12 +193,25 @@ export class GameManager {
         let game = this.games.find((g) => g.id === activeMatch.id);
         if (!game) {
           // if the other player is in memory, link them; otherwise create placeholder
-          const opponentId = activeMatch.whitePlayerId === user.id ? activeMatch.blackPlayerId : activeMatch.whitePlayerId;
-          const opponent = this.players.find((p) => p.id === opponentId) ?? new Player(opponentId, (null as any), undefined);
-          const white = activeMatch.whitePlayerId === user.id ? player : opponent;
-          const black = activeMatch.whitePlayerId === user.id ? opponent : player;
+          const opponentId =
+            activeMatch.whitePlayerId === user.id
+              ? activeMatch.blackPlayerId
+              : activeMatch.whitePlayerId;
+          const opponent =
+            this.players.find((p) => p.id === opponentId) ??
+            new Player(opponentId, null as any, undefined);
+          const white =
+            activeMatch.whitePlayerId === user.id ? player : opponent;
+          const black =
+            activeMatch.whitePlayerId === user.id ? opponent : player;
 
-          game = new Game(white, black, activeMatch.id, activeMatch.fen ?? new Chess().fen(), (activeMatch.moves as any) ?? []);
+          game = new Game(
+            white,
+            black,
+            activeMatch.id,
+            activeMatch.fen ?? new Chess().fen(),
+            (activeMatch.moves as any) ?? []
+          );
           this.games.push(game);
         } else {
           // restore websocket on the player inside the game object
@@ -162,7 +219,7 @@ export class GameManager {
           if (game.blackPlayer.id === player.id) game.blackPlayer.ws = ws;
           player.game = game;
         }
-        
+
         // send resume payload
         ws.send(
           JSON.stringify({
@@ -170,9 +227,9 @@ export class GameManager {
             payload: {
               fen: game.board.fen(),
               moves: game.moves,
-              turn: game.board.turn()
+              turn: game.board.turn(),
             },
-            message: "Game restored!"
+            message: "Game restored!",
           })
         );
       } else {
@@ -180,13 +237,14 @@ export class GameManager {
         ws.send(
           JSON.stringify({
             type: Messages.Player_Joined,
-            message: user.username ? `Welcome back, ${user.username}!` : `Welcome! Please set your username.`,
-            payload: { id: user.id, username: user.username }
+            message: user.username
+              ? `Welcome back, ${user.username}!`
+              : `Welcome! Please set your username.`,
+            payload: { id: user.id, username: user.username },
           })
         );
       }
       return player;
-      
     } catch (err) {
       console.error("Error adding player:", err);
       ws.close(4001, "Auth error");
@@ -194,25 +252,27 @@ export class GameManager {
   }
 
   public handleConnectionClose(ws: WebSocket) {
-    
     const player = this.players.find((p) => p.ws === ws);
     if (!player) return;
 
     // remove socket ref but keep player in memory to allow reconnect
-    player.ws = (null as any);
+    player.ws = null as any;
 
     // If player in a game, start a disconnect timer (60s)
     if (player.game) {
       const game = player.game;
-      const opponent = game.whitePlayer.id === player.id ? game.blackPlayer : game.whitePlayer;
+      const opponent =
+        game.whitePlayer.id === player.id ? game.blackPlayer : game.whitePlayer;
 
       // notify opponent (if they have socket)
       if (opponent.ws) {
         try {
-          opponent.ws.send(JSON.stringify({
-            type: Messages.Player_Left,
-            message: "Opponent disconnected. Waiting 60s for reconnection...",
-          }));
+          opponent.ws.send(
+            JSON.stringify({
+              type: Messages.Player_Left,
+              message: "Opponent disconnected. Waiting 60s for reconnection...",
+            })
+          );
         } catch (e) {}
       }
 
@@ -235,10 +295,12 @@ export class GameManager {
         // notify opponent if present
         if (opponent.ws) {
           try {
-            opponent.ws.send(JSON.stringify({
-              type: Messages.Game_Aborted,
-              message: "Opponent did not return. Game aborted.",
-            }));
+            opponent.ws.send(
+              JSON.stringify({
+                type: Messages.Game_Aborted,
+                message: "Opponent did not return. Game aborted.",
+              })
+            );
           } catch (e) {}
         }
 
@@ -273,11 +335,12 @@ export class GameManager {
           where: { id: game.id },
           data: {
             status: MatchStatus.ABORTED,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
 
-        const opponent = game.whitePlayer === player ? game.blackPlayer : game.whitePlayer;
+        const opponent =
+          game.whitePlayer === player ? game.blackPlayer : game.whitePlayer;
         opponent.ws.send(
           JSON.stringify({
             type: Messages.Player_Left,
@@ -306,9 +369,8 @@ export class GameManager {
     //a user is in the queue
     //start the game
     if (this.pendingUser && this.pendingUser.id !== player.id) {
-
       const initialFen = new Chess().fen();
-      
+
       const dbMatch = await prisma.match.create({
         data: {
           whitePlayerId: this.pendingUser.id,
@@ -317,11 +379,17 @@ export class GameManager {
           moves: [],
           fen: initialFen,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
-      
-      const game = new Game(this.pendingUser, player, dbMatch.id, initialFen, []);
+
+      const game = new Game(
+        this.pendingUser,
+        player,
+        dbMatch.id,
+        initialFen,
+        []
+      );
 
       //add game object to both players
       this.pendingUser.game = game;
@@ -364,7 +432,7 @@ export class GameManager {
       player.ws.send(
         JSON.stringify({ type: "error", message: "You are not in a game." })
       );
-    }else {
+    } else {
       game.makeMove(player.ws, move);
     }
   }

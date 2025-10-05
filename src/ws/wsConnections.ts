@@ -28,7 +28,12 @@ export default function wsConnections(server: http.Server) {
     });
     
     console.log("player connected");
-    gameManager.addPlayer(ws, req);
+    const email = new URLSearchParams(req.url?.split('?')[1]).get('email');
+    if(!email){
+      ws.close(4001, "Unauthorized: no email");
+      return;
+    }
+    gameManager.addPlayer(ws, req, email);
 
     ws.on("message", (message : Buffer) => {
       try {

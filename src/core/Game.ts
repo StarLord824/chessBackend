@@ -48,31 +48,29 @@ export class Game {
   }
 
   public async makeMove(playerWs: WebSocket, move: MovePayload) {
+  try {
     const playerColor = playerWs === this.whitePlayer.ws ? "w" : "b";
 
-    //check if this is the player's turn, and if the move is valid
+    // check if this is the player's turn
     if (this.board.turn() !== playerColor) {
-      playerWs.send(JSON.stringify({
-        type: "error",
-        message: "It's not your turn."
-      }));
+      playerWs.send(JSON.stringify({ type: "error", message: "It's not your turn." }));
       return;
     }
-    //perform move using chess.js library
+
+    // perform move using chess.js
     const result = this.board.move({ from: move.from, to: move.to, promotion: move.promotion } as Move);
     if (!result) {
-      playerWs.send(JSON.stringify({
-        type: "error",
-        message: "Invalid move."
-      }));
+      playerWs.send(JSON.stringify({ type: "error", message: "Invalid move." }));
       return;
     }
+
     const san = result.san ?? `${move.from}${move.to}`;
     const ts = Date.now();
+
     // Save move
     this.moves.push({ from: move.from, to: move.to, san, ts });
 
-    //persist move + fen
+    // persist move + fen
     await prisma.match.update({
       where: { id: this.id },
       data: {
@@ -82,13 +80,13 @@ export class Game {
       }
     });
 
-    // Broadcast move to both players
+    // broadcast move to both players
     [this.whitePlayer, this.blackPlayer].forEach(p => {
       try {
         p.ws.send(JSON.stringify({
           type: Messages.Move,
           payload: {
-            moves: this.moves, //includes full move history
+            moves: this.moves,
             board: this.board.fen(),
             turn: this.board.turn(),
             move: { from: move.from, to: move.to, san, ts }
@@ -105,7 +103,7 @@ export class Game {
       let endReason = 'Unknown';
 
       if (this.board.isCheckmate()) {
-        winner = this.board.turn() === "w" ? "black" : "white"; // opposite of current turn
+        winner = this.board.turn() === "w" ? "black" : "white";
         endReason = "Checkmate";
       } else if(this.board.isDraw()){
         winner = null;
@@ -119,20 +117,21 @@ export class Game {
         where: { id: this.id },
         data: {
           status: MatchStatus.FINISHED,
-          // winnerId: winner === "draw" ? null : winner === "black" ? this.blackPlayer.id : this.whitePlayer.id,
           winnerId: winner === "black" ? this.blackPlayer.id : winner === "white" ? this.whitePlayer.id : null,
           result: winner === "black" ? "0-1" : winner === "white" ? "1-0" : "1/2-1/2",
           endReason,
           updatedAt: new Date(),
         }
       });
-      
+
       [this.whitePlayer, this.blackPlayer].forEach(p => {
-        p.ws.send(JSON.stringify({
-          type: Messages.Game_Over,
-          payload: {winner, endReason}
-        }));
+        p.ws.send(JSON.stringify({ type: Messages.Game_Over, payload: {winner, endReason} }));
       });
     }
+  } catch (err) {
+    console.error("Error in makeMove:", err);
+    playerWs.send(JSON.stringify({ type: "error", message: "Server error while making move." }));
   }
+}
+
 }
